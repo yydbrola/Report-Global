@@ -194,18 +194,26 @@ categorias:
 
 # Tons do discurso: segunda pergunta JEV, enviada somente para artigos
 # do YouTube (tipo_fonte == 'youtube'); notícias de texto ficam sem tom.
+# Taxonomia profissional fixada em 22/10/2026 (7 opções, sem adicionar/remover).
 tons:
   neutro_informativo:
-    criterio: "Straightforward reporting, factual, objective tone, no strong adjectives."
+    nome: "Neutro / Informativo"
+    criterio_jev: "Straight news reporting, factual, objective tone, no strong adjectives or emotional language."
+  analitico_tecnico:
+    nome: "Analítico / Técnico"
+    criterio_jev: "In-depth analysis, expert commentary, educational, focusing on explanations and data."
   critico_oposicao:
-    criterio: "Criticism of government, policies, or institutions, highlighting failures or scandals."
+    nome: "Crítico / Oposição"
+    criterio_jev: "Criticism of government, policies, or institutions, highlighting failures, scandals, or investigative findings."
   nacionalista_estatal:
-    criterio: "Patriotic tone, justifying state actions, praising national achievements, state-aligned."
+    nome: "Nacionalista / Estatal"
+    criterio_jev: "Patriotic tone, justifying state actions, praising national achievements, state-aligned perspective."
   alarmista_crise:
-    criterio: "Fear-inducing language, focusing on chaos, emergencies, threats, or imminent crises."
-  diplomatico_oficial:
-    criterio: "Formal, institutional tone, resembling official statements, press releases, or diplomatic speak."
+    nome: "Alarmista / Crise"
+    criterio_jev: "Fear-inducing language, focusing on chaos, emergencies, threats, or imminent crises."
   sensacionalista_popular:
-    criterio: "Colloquial, exaggerated language, focusing on drama or shock value to generate clicks."
+    nome: "Sensacionalista / Popular"
+    criterio_jev: "Colloquial, exaggerated language, focusing on drama, shock value, or emotional manipulation to generate clicks."
   outros_nao_classificado:
-    criterio: "The tone is unclear, mixed, or does not fit any of the above."
+    nome: "Outros"
+    criterio_jev: "The tone is unclear, mixed, satirical, or does not fit any of the above categories."

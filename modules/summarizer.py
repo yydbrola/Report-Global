@@ -84,6 +84,8 @@ def resumir(artigo, config, api_key):
     )
 
     conteudo = ((resp.get("choices") or [{}])[0].get("message") or {}).get("content", "")
+    uso = resp.get("usage") or {}
+    artigo["custo_resumo"] = float(uso.get("cost") or 0.0)
     resumo = _extrair_resumo(conteudo)
     if not resumo:
         escolha = (resp.get("choices") or [{}])[0]

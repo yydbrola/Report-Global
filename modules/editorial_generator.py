@@ -22,6 +22,7 @@ from . import openrouter_client as ort
 log = logging.getLogger("pipeline.editorial")
 
 _RESULTADO = {"salvo": False, "editorial": {}}
+_ULTIMO_CUSTO = {"valor": None}  # custo USD da última chamada editorial (ficha técnica)
 _DADOS_EDICAO = {}
 
 
@@ -301,10 +302,18 @@ def _via_directo(config, api_key, digest):
                          tentativas=int(conf.get("tentativas", 5)),
                          backoff_base=float(conf.get("backoff_base_seg", 1.0)),
                          backoff_max=float(conf.get("backoff_max_seg", 30.0)))
+    _ULTIMO_CUSTO["valor"] = float(((resp.get("usage") or {}).get("cost")) or 0.0)
     mensagem = (resp.get("choices") or [{}])[0].get("message") or {}
     conteudo = mensagem.get("content")
     if not conteudo:
         motivo = ((resp.get("choices") or [{}])[0].get("finish_reason"))
+        log.warning(
+            "directo: resposta sem conteúdo (finish_reason=%s, usage=%s, erro=%s, chaves=%s)",
+            motivo,
+            {k: resp.get(k) for k in ("usage", "error") if resp.get(k)},
+            str((resp.get("error") or ""))[:200],
+            list(resp.keys())[:12] if isinstance(resp, dict) else "?",
+        )
         raise RuntimeError(
             f"resposta sem conteúdo (finish_reason={motivo}); "
             "aumente editorial.max_tokens"
@@ -373,4 +382,5 @@ def gerar_editorial(artigos, config, api_key, radar_tendencias=None):
         padronizado["subtitulo_capa"] = (config_ed.get("subtitulo_capa_fallback") or "").strip() or None
     padronizado["ativo"] = bool(padronizado["panorama_geral"] or padronizado["destaques_por_tema"])
     padronizado["motor"] = motor if bruto else None
+    padronizado["custo_editorial"] = _ULTIMO_CUSTO["valor"] if bruto else 0.0
     return padronizado

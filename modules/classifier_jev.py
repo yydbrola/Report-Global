@@ -40,7 +40,7 @@ def construir_criteria(config):
 def construir_criteria_tons(config):
     """{chave_config: texto_criterio} dos tons do discurso."""
     return {
-        chave: info["criterio"]
+        chave: info["criterio_jev"]
         for chave, info in (config.get("tons") or {}).items()
     }
 

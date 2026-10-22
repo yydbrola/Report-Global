@@ -94,6 +94,11 @@ def _montar_artigo(entry, termo, min_views, dias):
     texto = texto or entry.get("title") or ""
 
     canal = (entry.get("channel") or entry.get("uploader") or "YouTube")
+    thumb = entry.get("thumbnail") or ""
+    if not thumb:
+        miniaturas = entry.get("thumbnails") or []
+        if miniaturas and isinstance(miniaturas, list):
+            thumb = (miniaturas[-1] or {}).get("url") or ""
     return {
         "titulo": (entry.get("title") or "").strip() or "Sem título",
         "url": url,
@@ -107,6 +112,7 @@ def _montar_artigo(entry, termo, min_views, dias):
         "views": views if isinstance(views, (int, float)) else None,
         "likes": likes if isinstance(likes, (int, float)) else None,
         "engajamento_pct": engajamento,
+        "thumbnail_url": thumb,
     }
 
 

@@ -81,8 +81,12 @@ def _cache_valido(registro, ttl_dias):
         return False
 
 
-def _herdar_cache(artigo, cache, ttl_dias):
-    """Aplica tema/resumo em cache ao artigo antes de gastar chamadas de API."""
+def _herdar_cache(artigo, cache, ttl_dias, tons_validos=None):
+    """Aplica tema/resumo em cache ao artigo antes de gastar chamadas de API.
+
+    tons_validos: chaves atuais da taxonomia de tons; tom em cache fora dela
+    (ex.: `diplomatico_oficial` aposentado) é invalidado para reclassificação.
+    """
     reg = cache.get(_chave_url(artigo.get("url", ""))) or {}
     bloco = reg.get("tema")
     if bloco and _cache_valido(bloco, ttl_dias):
@@ -91,6 +95,13 @@ def _herdar_cache(artigo, cache, ttl_dias):
                       "tom_probabilidades", "tom_modelo", "tom_forcado"):
             if campo in bloco:
                 artigo[campo] = bloco[campo]
+        if (tons_validos is not None and artigo.get("tom")
+                and artigo["tom"] not in tons_validos):
+            log.info("cache: tom '%s' fora da taxonomia atual; reclassificando %s",
+                     artigo["tom"], str(artigo.get("url", ""))[:60])
+            for campo in ("tom", "tom_confianca", "tom_probabilidades",
+                          "tom_modelo", "tom_forcado"):
+                artigo.pop(campo, None)
         artigo["custo_classificacao"] = 0.0
         artigo["do_cache"] = True
     bloco = reg.get("resumo")
@@ -196,19 +207,24 @@ def passo_resumir(artigos, config, api_key, cache, ttl_dias, desativar=False):
     return artigos
 
 
-def _resumo_execucao(artigos, editorial, radar=None):
-    com_tema_especifico = sum(
-        1 for a in artigos if a.get("tema") and a["tema"] != "outros"
-    )
-    com_resumo = sum(1 for a in artigos if a.get("resumo_curto"))
-    custo = sum(float(a.get("custo_classificacao") or 0.0) for a in artigos)
+def _resumo_execucao(artigos, editorial, radar=None, em_cache=0, limite=None):
+    custo_classif = sum(float(a.get("custo_classificacao") or 0.0) for a in artigos)
+    custo_resumo = sum(float(a.get("custo_resumo") or 0.0) for a in artigos)
+    custo_editorial = float((editorial or {}).get("custo_editorial") or 0.0)
     return {
         "artigos": len(artigos),
-        "com_tema_especifico": com_tema_especifico,
-        "com_resumo": com_resumo,
+        "limite_solicitado": limite,
+        "em_cache": em_cache,
+        "com_tema_especifico": sum(
+            1 for a in artigos if a.get("tema") and a["tema"] != "outros"),
+        "com_resumo": sum(1 for a in artigos if a.get("resumo_curto")),
         "videos_youtube": sum(1 for a in artigos if a.get("tipo_fonte") == "youtube"),
-        "custo_total_usd": round(custo, 6),
-        "editorial_ativo": bool(editorial.get("ativo")),
+        "custo_classificacao_usd": round(custo_classif, 6),
+        "custo_resumo_usd": round(custo_resumo, 6),
+        "custo_editorial_usd": round(custo_editorial, 6),
+        "custo_trends_usd": 0.0,  # cota gratuita da Trends API; custo por req n/a
+        "custo_total_usd": round(custo_classif + custo_resumo + custo_editorial, 6),
+        "editorial_ativo": bool((editorial or {}).get("ativo")),
         "radar_tendencias": bool(radar),
     }
 
@@ -264,11 +280,9 @@ def main(argv=None):
     cache_config = config.get("cache") or {}
     cache = _carregar_cache(bool(cache_config.get("ativo", True)))
     ttl = int(cache_config.get("ttl_dias", 7))
+    tons_validos = set((config.get("tons") or {}).keys())
     for artigo in artigos:
-        _herdar_cache(artigo, cache, ttl)
-    em_cache = sum(1 for a in artigos if a.get("do_cache"))
-    if em_cache:
-        log.info("%d artigo(s) reaproveitado(s) do cache (TTL %d dias)", em_cache, ttl)
+        _herdar_cache(artigo, cache, ttl, tons_validos)
 
     # Radar ANTES da classificação: o --youtube precisa dos termos em alta.
     radar_tendencias = None
@@ -282,10 +296,14 @@ def main(argv=None):
         if radar_tendencias:
             videos = youtube_scraper.coletar_videos(radar_tendencias, config)
             for video in videos:
-                _herdar_cache(video, cache, ttl)
+                _herdar_cache(video, cache, ttl, tons_validos)
             artigos.extend(videos)
         else:
             log.warning("youtube: --youtube exige --trends; sem termos em alta para buscar")
+
+    em_cache = sum(1 for a in artigos if a.get("do_cache"))
+    if em_cache:
+        log.info("%d artigo(s) reaproveitado(s) do cache (TTL %d dias)", em_cache, ttl)
 
     artigos = passo_classificar(artigos, config, api_key, cache, ttl)
     artigos = passo_resumir(artigos, config, api_key, cache, ttl,
@@ -303,14 +321,15 @@ def main(argv=None):
             (editorial or {}).get("analise_tendencias") or ""
         )
 
+    stats_execucao = _resumo_execucao(artigos, editorial, radar=radar_tendencias,
+                                   em_cache=em_cache, limite=limite)
     hoje_ext = datetime.now().strftime("%d/%m/%Y")
     dados_rel = pdf_builder.gerar(
         artigos, config, editorial,
         dir_saida=str(DIR_SAIDA), dir_dados=str(DIR_DADOS), data_execucao=hoje_ext,
-        radar_tendencias=radar_tendencias,
+        radar_tendencias=radar_tendencias, estatisticas=stats_execucao,
     )
-    dados_rel["resumo_execucao"] = _resumo_execucao(
-        artigos, editorial, radar=radar_tendencias)
+    dados_rel["resumo_execucao"] = stats_execucao
 
     salvar_json(DIR_SAIDA / f"dados_{datetime.now().strftime('%Y-%m-%d')}.json", dados_rel)
 

@@ -7,6 +7,10 @@ Política de retry (doc oficial Decisions API):
 - Não tentar de novo: 400, 401, 402/403 de créditos, 413 (erro terminal);
 - Backoff: header Retry-After quando existir, senão exponencial com jitter
   (base * 2^(n-1), teto configurável).
+
+Caso especial: OpenRouter pode devolver HTTP 200 com corpo
+{"error": {...}} (ex.: "Upstream idle timeout exceeded", code 504) e sem
+"choices" — tratamos o código embutido com a mesma política de retry.
 """
 import random
 import time
@@ -41,16 +45,36 @@ def post_json(url, payload, api_key, tentativas=5, backoff_base=1.0,
             falha = ErroRetry(f"falha de transporte: {exc}")
         else:
             if resp.ok:
-                return resp.json()
-            corpo = resp.text[:400]
-            if resp.status_code in (408, 429) or resp.status_code >= 500:
-                falha = ErroRetry(f"HTTP {resp.status_code}: {corpo}",
-                                  _retry_after(resp.headers.get("Retry-After")))
-            elif resp.status_code == 402 and "openrouter_in_flight_budget" in resp.text:
-                falha = ErroRetry(f"HTTP 402 in-flight budget: {corpo}",
-                                  _retry_after(resp.headers.get("Retry-After")))
+                try:
+                    corpo_json = resp.json()
+                except ValueError:
+                    corpo_json = None
+                tem_erro_embutido = (isinstance(corpo_json, dict)
+                                     and "error" in corpo_json
+                                     and "choices" not in corpo_json)
+                if corpo_json is None:
+                    raise ErroTerminal(
+                        "HTTP 200 com corpo não decodificável como JSON")
+                if not tem_erro_embutido:
+                    return corpo_json
+                erro = corpo_json["error"]
+                codigo = erro.get("code") if isinstance(erro, dict) else None
+                if isinstance(codigo, int) and (codigo in (408, 429) or codigo >= 500):
+                    falha = ErroRetry(
+                        f"corpo de erro dentro de HTTP 200: {resp.text[:400]}")
+                else:
+                    raise ErroTerminal(
+                        f"corpo de erro dentro de HTTP 200: {resp.text[:400]}")
             else:
-                raise ErroTerminal(f"HTTP {resp.status_code}: {corpo}")
+                corpo = resp.text[:400]
+                if resp.status_code in (408, 429) or resp.status_code >= 500:
+                    falha = ErroRetry(f"HTTP {resp.status_code}: {corpo}",
+                                      _retry_after(resp.headers.get("Retry-After")))
+                elif resp.status_code == 402 and "openrouter_in_flight_budget" in resp.text:
+                    falha = ErroRetry(f"HTTP 402 in-flight budget: {corpo}",
+                                      _retry_after(resp.headers.get("Retry-After")))
+                else:
+                    raise ErroTerminal(f"HTTP {resp.status_code}: {corpo}")
 
         espera = max(falha.retry_after or 0.0, 0.0)
         if espera == 0.0:

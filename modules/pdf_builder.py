@@ -6,7 +6,7 @@ Contrato do template editorial (capa, radar, dashboard, ficha técnica):
   periodo, status, series[{date, value}]}]}  — série alimenta o Sparkline
 - tematicas: [{nome, rotulo, destaque, artigos[...]}, ...] com artigo
   {titulo, resumo, fonte, data, confianca, link, tipo_fonte, canal, views,
-  engajamento_pct, likes, thumbnail_path, tom, tom_chip{...}}
+  engajamento_pct, likes, thumbnail_path, tom, tom_chip{...}, titulo_original.
 - auditoria: dados REAIS de execução (funil, cache, custo por camada,
   modelos) para a Ficha Técnica — nada de números de demonstração.
 
@@ -85,8 +85,11 @@ def _tom_chip(artigo, tons):
 def _artigo_pdf(a, tons, data_str, dir_saida):
     confianca = a.get("tema_confianca")
     thumb_url = a.get("thumbnail_url")
+    titulo = a.get("titulo", "Sem título")
     return {
-        "titulo": a.get("titulo", "Sem título"),
+        # Título em PT-BR (sumarizador); original preservado só no JSON
+        "titulo": a.get("titulo_traduzido") or titulo,
+        "titulo_original": titulo,
         "resumo": a.get("resumo_curto"),
         "fonte": a.get("fonte", "Não informada"),
         "data": _data_legivel(a.get("data_publicacao")) or data_str,

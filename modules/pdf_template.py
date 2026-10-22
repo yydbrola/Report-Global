@@ -53,6 +53,7 @@ CORES_SEMANTICAS = {
     "ECONOMIA": colors.HexColor("#2E5B3A"),
     "DIPLOMACIA": colors.HexColor("#1D3348"),
     "TECNOLOGIA": colors.HexColor("#5A3A8C"),
+    "BRASIL": colors.HexColor("#3A7E44"),
 }
 
 PAGE_W, PAGE_H = A4
@@ -67,11 +68,32 @@ COLUMN_W = (CONTENT_W - COLUMN_GAP) / 2
 # ---------------------------------------------------------------------
 # HELPERS E ESTILOS
 # ---------------------------------------------------------------------
+def _saneia(texto):
+    """Descarta controles C0/C1 e sorteia por espaço glifos sem cobertura na
+    fonte (cp1252) — emojis/pictogramas viram espaço; poluição "" some."""
+    limpos = []
+    for c in texto:
+        o = ord(c)
+        if o in (0x09, 0x0A):
+            limpos.append(c)
+            continue
+        if o <= 0x1F or 0x7F <= o <= 0x9F:
+            continue
+        try:
+            c.encode("cp1252")
+        except UnicodeEncodeError:
+            c = " "
+        if c == " " and limpos and limpos[-1] == " ":
+            continue
+        limpos.append(c)
+    return "".join(limpos)
+
+
 def esc(texto):
     """Escapa dados externos para uso seguro em Paragraph (markup XML)."""
     if texto is None:
         return ""
-    return escape(str(texto)).replace("\n", "<br/>")
+    return escape(_saneia(str(texto))).replace("\n", "<br/>")
 
 
 def fmt_views(valor):
@@ -875,7 +897,9 @@ def artigo_flowables(artigo, rotulo, cor_kicker, st):
             ('RIGHTPADDING', (0,0), (0,0), 6), # Espaçamento entre miniatura e texto
         ]))
 
-        saida.append(t_layout)
+        # Card inteiro em KeepTogether (nível de fluxo): a tabela nunca quebra
+        # no meio nem "escorre" texto abaixo da miniatura entre colunas/páginas.
+        saida.append(KeepTogether([t_layout]))
         saida.append(divisor)
 
     else:

@@ -183,10 +183,14 @@ categorias:
     nome: "Tecnologia e Ciberespaço"
     rotulo: "TECNOLOGIA"
     criterio_jev: "AI regulations, semiconductor supply chains, space exploration, tech decoupling (US vs China), cyber warfare, and digital privacy."
-  politica_domestica_global:
-    nome: "Política Doméstica com Impacto Global"
-    rotulo: "POLÍTICA DOMÉSTICA"
-    criterio_jev: "Major elections in key countries, domestic protests affecting foreign policy, internal political crises, and leadership changes with international spillover."
+  brasil_politica:
+    nome: "Brasil"
+    rotulo: "BRASIL"
+    criterio_jev: "Domestic political events, elections, economic policies, or protests specifically within Brazil."
+  politica_internacional_regional:
+    nome: "Política Internacional e Regional"
+    rotulo: "POLÍTICA GLOBAL"
+    criterio_jev: "Internal political events, elections, protests, or leadership changes in foreign countries (excluding Brazil) that have regional or international implications. Do NOT use for Brazilian domestic politics."
   outros:
     nome: "Outros"
     rotulo: "GERAL"

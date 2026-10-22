@@ -81,11 +81,12 @@ def _cache_valido(registro, ttl_dias):
         return False
 
 
-def _herdar_cache(artigo, cache, ttl_dias, tons_validos=None):
+def _herdar_cache(artigo, cache, ttl_dias, tons_validos=None, temas_validos=None):
     """Aplica tema/resumo em cache ao artigo antes de gastar chamadas de API.
 
     tons_validos: chaves atuais da taxonomia de tons; tom em cache fora dela
     (ex.: `diplomatico_oficial` aposentado) é invalidado para reclassificação.
+    temas_validos: idem para temas — renomear categoria no config reclassifica.
     """
     reg = cache.get(_chave_url(artigo.get("url", ""))) or {}
     bloco = reg.get("tema")
@@ -95,6 +96,13 @@ def _herdar_cache(artigo, cache, ttl_dias, tons_validos=None):
                       "tom_probabilidades", "tom_modelo", "tom_forcado"):
             if campo in bloco:
                 artigo[campo] = bloco[campo]
+        if (temas_validos is not None and artigo.get("tema")
+                and artigo["tema"] not in temas_validos):
+            log.info("cache: tema '%s' fora da taxonomia atual; reclassificando %s",
+                     artigo["tema"], str(artigo.get("url", ""))[:60])
+            for campo in ("tema", "tema_confianca", "tema_probabilidades",
+                          "tema_modelo", "tema_forcado"):
+                artigo.pop(campo, None)
         if (tons_validos is not None and artigo.get("tom")
                 and artigo["tom"] not in tons_validos):
             log.info("cache: tom '%s' fora da taxonomia atual; reclassificando %s",
@@ -110,6 +118,8 @@ def _herdar_cache(artigo, cache, ttl_dias, tons_validos=None):
             artigo["resumo_curto"] = bloco["resumo_curto"]
             artigo["metodo_resumo"] = "cache"
             artigo["do_cache"] = True
+            if bloco.get("titulo_traduzido"):
+                artigo["titulo_traduzido"] = bloco["titulo_traduzido"]
 
 
 def _gravar_cache(cache, artigo, campos, secao):
@@ -199,7 +209,8 @@ def passo_resumir(artigos, config, api_key, cache, ttl_dias, desativar=False):
             log.error("resumo %s: %s", artigo.get("url", "")[:80], exc)
         else:
             if artigo.get("resumo_curto"):
-                _gravar_cache(cache, artigo, ("resumo_curto",), "resumo")
+                _gravar_cache(cache, artigo,
+                              ("resumo_curto", "titulo_traduzido"), "resumo")
                 suc += 1
         time.sleep(DELAY_INTERCHAMADAS)
     log.info("resumo concluído: %d ok, %d falha(s), %d sem conteúdo",
@@ -281,8 +292,9 @@ def main(argv=None):
     cache = _carregar_cache(bool(cache_config.get("ativo", True)))
     ttl = int(cache_config.get("ttl_dias", 7))
     tons_validos = set((config.get("tons") or {}).keys())
+    temas_validos = set((config.get("categorias") or {}).keys())
     for artigo in artigos:
-        _herdar_cache(artigo, cache, ttl, tons_validos)
+        _herdar_cache(artigo, cache, ttl, tons_validos, temas_validos)
 
     # Radar ANTES da classificação: o --youtube precisa dos termos em alta.
     radar_tendencias = None
@@ -296,7 +308,7 @@ def main(argv=None):
         if radar_tendencias:
             videos = youtube_scraper.coletar_videos(radar_tendencias, config)
             for video in videos:
-                _herdar_cache(video, cache, ttl, tons_validos)
+                _herdar_cache(video, cache, ttl, tons_validos, temas_validos)
             artigos.extend(videos)
         else:
             log.warning("youtube: --youtube exige --trends; sem termos em alta para buscar")

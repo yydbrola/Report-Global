@@ -229,8 +229,10 @@ categorias:
 5. **Adicionar/remover/renomear = mexer só no `config.yaml`** — sem tocar no código.
 
 **⚠️ Ao alterar critérios, limpe o cache de temas** — o cache (7 dias) guarda
-classificações antigas por URL e **não detecta** que os critérios mudaram. Purgando
-só a parte de temas (os resumos permanecem, poupando chamadas):
+classificações antigas por URL e **não detecta** que os critérios mudaram. Renomear ou
+remover CHAVES, por outro lado, é detectado na hora — temas em cache fora da taxonomia
+atual são invalidados em runtime. Para purgar temas (critérios alterados na mesma
+chave; os resumos permanecem, poupando chamadas):
 
 ```powershell
 .venv\Scripts\python.exe -c "import json,pathlib; p=pathlib.Path('data/cache.json'); c=json.loads(p.read_text(encoding='utf-8')) if p.exists() else {}; c={k:{kk:vv for kk,vv in r.items() if kk!='tema'} for k,r in c.items()}; c={k:v for k,v in c.items() if v}; p.write_text(json.dumps(c,ensure_ascii=False,indent=1),encoding='utf-8')"

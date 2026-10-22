@@ -2,9 +2,16 @@
 """Template editorial de jornal para Briefing Diário de Relações Internacionais.
 
 Dependência: pip install reportlab
-Execução: python pdf_template.py
+Consumo real: modules.pdf_builder.montar_dados() monta o dicionário `dados`,
+e pdf_template.gerar_relatorio(dados) desenha o PDF.
 
-Ajuste o dicionário DADOS ou passe seu objeto de dados para gerar_relatorio().
+Contrato: gerar_relatorio(dados) consome chaves
+data, edicao, modelo_ia, titulo_capa, subtitulo_capa, artigos_analisados,
+auditoria (fontes_lidas, funil, total_artigos, custo_estimado,
+custo_por_camada, modelos_ia, nota_metodologica), dados_tendencias,
+panorama_geral, tematicas, analise_narrativas.
+Para visualizar o layout no desenvolvimento, monte um dict com esse contrato
+e chame gerar_relatorio(dicionario, "prova.pdf").
 Usa BaseDocTemplate + Frame para capa/radar em coluna única e miolo em duas colunas.
 """
 
@@ -55,110 +62,6 @@ MARGIN_BOTTOM = 18 * mm
 CONTENT_W = PAGE_W - 2 * MARGIN_X
 COLUMN_GAP = 6.5 * mm
 COLUMN_W = (CONTENT_W - COLUMN_GAP) / 2
-
-
-# ---------------------------------------------------------------------
-# DADOS DE DEMONSTRAÇÃO — Atualizado com auditoria, thumbnail e novos temas
-# ---------------------------------------------------------------------
-DADOS = {
-    "data": "22/10/2026",
-    "edicao": "EDIÇÃO 001",
-    "modelo_ia": "GPT-6",
-    "artigos_analisados": 42,
-    "titulo_capa": "O MUNDO EM\nMOVIMENTO",
-    "subtitulo_capa": "Sinais diplomáticos, riscos estratégicos e os temas que moldam a agenda internacional.",
-    "auditoria": {
-        "fontes_lidas": "1.432 fontes (agências, feeds governamentais, redes)",
-        "total_artigos": 42,
-        "custo_estimado": "$ 0,45 (tokens API)",
-        "modelos_ia": "GPT-4o (Síntese) e Claude 3.5 Sonnet (Revisão)",
-        "nota_metodologica": "As classificações de tom e confiança são atribuídas por modelos probabilísticos automatizados e não substituem o julgamento analítico humano."
-    },
-    "dados_tendencias": {
-        "texto_analise": (
-            "Sanções combina índice de interesse elevado com crescimento expressivo, enquanto "
-            "Geopolítica mantém relevância alta no período. A variação de cada termo deve ser "
-            "interpretada junto ao índice atual e à janela de comparação, não isoladamente."
-        ),
-        "termos": [
-            {"termo": "Geopolítica", "indice_atual": 85, "variacao": "+45%", "periodo": "vs. 7 dias", "status": "alta"},
-            {"termo": "Sanções", "indice_atual": 92, "variacao": "+120%", "periodo": "vs. 30 dias", "status": "alta"},
-            {"termo": "Eleições", "indice_atual": 15, "variacao": "-10%", "periodo": "vs. 7 dias", "status": "queda"},
-        ],
-    },
-    "panorama_geral": [
-        "A agenda internacional do período foi marcada por movimentações diplomáticas e pela continuidade de tensões regionais. Os governos envolvidos buscaram preservar canais de negociação, enquanto divergências estratégicas limitaram avanços concretos.",
-        "No campo econômico, decisões regulatórias e sinais dos principais atores continuam relevantes para os fluxos comerciais e para a percepção de risco. Os próximos desdobramentos dependerão da implementação das medidas anunciadas e da resposta dos parceiros internacionais.",
-    ],
-    "analise_narrativas": (
-        "Vídeos de comentário político ampliaram a circulação de interpretações sobre a crise, "
-        "com forte ênfase em cenários de escalada. A leitura deve separar fatos verificáveis, "
-        "opiniões dos apresentadores e hipóteses ainda sem confirmação independente."
-    ),
-    "tematicas": [
-        {
-            "nome": "Conflitos e segurança",
-            "rotulo": "CONFLITOS",
-            "destaque": "A dinâmica de segurança permanece entre os fatores de maior impacto para a estabilidade regional.",
-            "artigos": [
-                {
-                    "titulo": "Tensões regionais mantêm governos em alerta máximo",
-                    "resumo": "Autoridades discutiram novas medidas de segurança e avaliaram seus possíveis impactos regionais. Analistas destacam que a implementação prática será determinante para os próximos passos.",
-                    "fonte": "Agência Internacional", "data": "22/10/2026", "confianca": 97,
-                    "link": "https://example.com/noticia-seguranca", "tipo_fonte": "web", "tom": "analítico",
-                },
-                {
-                    "titulo": "Comentaristas divergem sobre os próximos passos da crise",
-                    "resumo": "Um vídeo de análise reuniu interpretações sobre o cenário e seus possíveis desdobramentos. Parte das conclusões é opinativa e deve ser confrontada com comunicados oficiais e cobertura independente.",
-                    "fonte": "Canal de análise internacional", "data": "22/10/2026", "confianca": 88,
-                    "link": "https://www.youtube.com/watch?v=example", "tipo_fonte": "youtube",
-                    "thumbnail_path": "miniatura_mock.jpg", # Path simulado para ativar a feature visual
-                    "views": "128 mil", "engajamento": "6,4%", "tom": "alarmista",
-                    "pull_quote": "Parte das conclusões é opinativa e deve ser confrontada com fontes independentes.",
-                },
-            ],
-        },
-        {
-            "nome": "Diplomacia e relações bilaterais",
-            "rotulo": "DIPLOMACIA",
-            "destaque": "Os contatos diplomáticos sinalizam disposição para o diálogo, embora persistam divergências sobre os termos de um eventual acordo.",
-            "artigos": [
-                {
-                    "titulo": "Representantes retomam conversas sobre agenda bilateral",
-                    "resumo": "As delegações discutiram prioridades e possíveis mecanismos de cooperação. Não houve confirmação de um acordo definitivo até o fechamento deste briefing diário.",
-                    "fonte": "Portal de Notícias", "data": "22/10/2026", "confianca": 91,
-                    "link": "https://example.com/agenda-bilateral", "tipo_fonte": "web", "tom": "neutro",
-                },
-            ],
-        },
-        {
-            "nome": "Economia global",
-            "rotulo": "ECONOMIA",
-            "destaque": "Decisões regulatórias e sinais de política comercial seguem no radar de empresas e governos.",
-            "artigos": [
-                {
-                    "titulo": "Mercados observam novos sinais sobre política comercial",
-                    "resumo": "Investidores e formuladores de política acompanham possíveis mudanças nas regras de comércio. O impacto dependerá do alcance das medidas e da reação dos principais parceiros.",
-                    "fonte": "Observatório Econômico", "data": "22/10/2026", "confianca": 89,
-                    "link": "https://example.com/politica-comercial", "tipo_fonte": "web", "tom": "cauteloso",
-                },
-            ],
-        },
-        {
-            "nome": "Avanços Tecnológicos",
-            "rotulo": "TECNOLOGIA",
-            "destaque": "Regulação da IA domina os debates parlamentares globais.",
-            "artigos": [
-                {
-                    "titulo": "Novo marco regulatório para inteligência artificial artificial entra em pauta",
-                    "resumo": "O parlamento europeu abriu espaço para novas emendas na lei que governa a aplicação de modelos gerativos nos setores públicos e privados.",
-                    "fonte": "Tech Insight", "data": "22/10/2026", "confianca": 93,
-                    "link": "https://example.com/tech", "tipo_fonte": "web", "tom": "analítico",
-                },
-            ],
-        }
-    ],
-}
 
 
 # ---------------------------------------------------------------------
@@ -1205,7 +1108,3 @@ def gerar_relatorio(dados, caminho_saida="relatorio_internacional.pdf"):
     doc.build(story)
     return caminho_saida
 
-
-if __name__ == "__main__":
-    destino = gerar_relatorio(DADOS, "relatorio_internacional_demo.pdf")
-    print(f"PDF gerado: {destino}")

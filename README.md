@@ -139,10 +139,11 @@ jev:
   modelo: "typesafe/jev-1.13"                  # classificação (Decisions API)
 
 sumario:
-  modelo: "minimax/minimax-m3.1-flash:free"    # resumo por artigo (chat)
+  modelo: "nvidia/nemotron-3-ultra-550b-a55b:free"   # resumo por artigo (chat)
 
 editorial:
-  modelo: "minimax/minimax-m3.1-flash:free"    # camada editorial (chat)
+  motor: "directo"                             # smolagents | directo
+  modelo: "nvidia/nemotron-3.5-super-vl:free"  # camada editorial (chat)
 ```
 
 - **Trocar um modelo por outro** no OpenRouter: substitua o valor de `modelo` por qualquer
@@ -150,18 +151,21 @@ editorial:
   `"google/gemini-2.0-flash-001"`, `"anthropic/claude-3.5-haiku"`. Modelos `:free`
   têm cota por minuto — a pipeline já tem retry/backoff automático; para volume maior,
   use modelo pago.
+- **Política do projeto**: apenas modelos `:free` (registrada no cabeçalho do
+  `config.yaml`); o `minimax/minimax-m3.1-flash:free` antigo foi aposentado pelo
+  OpenRouter em 22/10/2026 — mantenha IDs vivos do catálogo.
 - **Jev** é diferente: só roda em provedores que implementem o protocolo **Decisions**
   (`<endpoint_base>/alpha/decisions`). Com OpenRouter, mantenha os IDs da família
   `typesafe/jev-*`. Se um dia migrar de provedor, troque **só** `endpoint_base`.
-- **Modelos com raciocínio** (série que "pensa antes de responder", como MiniMax M3.1)
-  consomem tokens de raciocínio antes do JSON: se os resumos começarem a falhar com
-  `finish_reason: length`, suba o teto:
+- **Modelos com raciocínio** (série que "pensa antes de responder", como os Nemotron
+  da NVIDIA) consomem tokens de raciocínio antes do JSON: se os resumos começarem a
+  falhar com `finish_reason: length`, suba o teto:
 
 ```yaml
 sumario:
-  max_tokens: 4000      # padrão interno: 3000
+  max_tokens: 4000     # padrão interno do código: 3000
 editorial:
-  max_tokens: 4000
+  max_tokens: 5000     # atual no config: 4500 (motor directo)
 ```
 
 ---

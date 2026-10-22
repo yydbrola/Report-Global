@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """Resumo breve por artigo (1–2 frases, PT-BR) via chat OpenRouter.
 
-Loop determinístico: uma chamada por artigo com `response_format: json_object`
-(modelo `minimax/minimax-m3.1-flash:free` suporta, conforme doc do modelo).
-Faz parte do cache idempotente: artigos já resumidos não gastam chamada.
+Loop determinístico: uma chamada por artigo com `response_format: json_object`.
+O modelo padrão em produção vem do config (`sumario.modelo`; em 22/10/2026 é
+`nvidia/nemotron-3-ultra-550b-a55b:free`). Faz parte do cache idempotente:
+artigos já resumidos não gastam chamada.
 """
 import json
 import logging
@@ -56,7 +57,7 @@ def resumir(artigo, config, api_key):
 
     truncar = int(limites.get("truncar_chars", 6000))
     payload = {
-        "model": conf.get("modelo", "minimax/minimax-m3.1-flash:free"),
+        "model": conf.get("modelo", "nvidia/nemotron-3-ultra-550b-a55b:free"),
         "temperature": 0.3,
         # alto: modelos com raciocínio (MiniMax M3.1) gastam tokens de
         # pensamento ANTES do JSON; teto baixo => content None (finish=length)

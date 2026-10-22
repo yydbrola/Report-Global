@@ -15,6 +15,7 @@ silenciosamente: a edição sai sem camada editorial (o PDF degrada limpo).
 """
 import json
 import logging
+import re
 
 from . import openrouter_client as ort
 
@@ -67,6 +68,19 @@ def _preparar_digest(artigos, config, radar_tendencias=None):
             "top_trends_youtube": [str(rotulo) for _r, rotulo
                                    in (radar_tendencias.get("top_trends") or [])][:6],
         }
+    videos = [a for a in artigos if a.get("tipo_fonte") == "youtube"]
+    if videos:
+        digest["youtube_videos"] = [{
+            "canal": v.get("canal") or v.get("fonte", ""),
+            "titulo": v.get("titulo", ""),
+            "resumo": (v.get("resumo_curto") or "")[:340],
+            "views": v.get("views"),
+            "likes": v.get("likes"),
+            "engajamento_pct": v.get("engajamento_pct"),
+            "tom": v.get("tom"),
+            "termo_busca": v.get("termo_busca"),
+        } for v in videos]
+        digest["tons_disponiveis"] = list((config.get("tons") or {}).keys())
     _DADOS_EDICAO.clear()
     _DADOS_EDICAO.update(digest)
     return digest
@@ -89,7 +103,8 @@ def _ferramentas():
     @tool
     def salvar_editorial(panorama_geral: str, destaques_por_tema: str,
                          titulo_capa: str, subtitulo_capa: str,
-                         analise_tendencias: str = "") -> str:
+                         analise_tendencias: str = "",
+                         analise_narrativas: str = "") -> str:
         """Entrega o corpo editorial estruturado da edição.
         Args:
             panorama_geral: JSON array com 2-3 parágrafos em português do Brasil (strings).
@@ -97,6 +112,7 @@ def _ferramentas():
             titulo_capa: manchete da capa em CAIXA ALTA, no máximo 24 caracteres, pode ter '\n' para duas linhas.
             subtitulo_capa: subtítulo da capa em uma frase (português do Brasil).
             analise_tendencias: OBRIGATÓRIO apenas se o digest tiver 'radar_tendencias': um único parágrafo (2-4 frases) interpretando o Radar (use EXATAMENTE os índices/percentuais fornecidos; nunca invente números). Caso contrário, string vazia.
+            analise_narrativas: OBRIGATÓRIO apenas se o digest tiver 'youtube_videos': um único parágrafo (3-4 frases) dizendo QUEM está falando os termos em alta (cite canais exatamente como estão no digest) e qual TOM predomina (use o nome exato do tom). Não invente canais nem tons. Caso contrário, string vazia.
         Returns:
             'salvo' em sucesso ou 'erro: motivo'.
         """
@@ -114,6 +130,7 @@ def _ferramentas():
             "titulo_capa": (titulo_capa or "").strip() or None,
             "subtitulo_capa": (subtitulo_capa or "").strip() or None,
             "analise_tendencias": (analise_tendencias or "").strip() or None,
+            "analise_narrativas": (analise_narrativas or "").strip() or None,
         }
         _RESULTADO["salvo"] = True
         return "salvo"
@@ -126,7 +143,7 @@ def _construir_modelo(config, api_key):
     base = (config.get("openrouter") or {}).get("endpoint_base", "https://openrouter.ai/api")
     api_base = f"{base}/v1"
     config_ed = config.get("editorial") or {}
-    modelo_id = config_ed.get("modelo", "minimax/minimax-m3.1-flash:free")
+    modelo_id = config_ed.get("modelo", "nvidia/nemotron-3.5-super-vl:free")
 
     try:
         from smolagents import OpenAIServerModel
@@ -155,11 +172,17 @@ Passos:
    - titulo_capa: manchete da capa em CAIXA ALTA, até 24 caracteres; pode usar
      '\\n' para separar em duas linhas. Deve sintetizar o espírito da edição.
    - subtitulo_capa: uma frase de subtítulo em português do Brasil.
-   - analise_tendencias: SE o digest contiver 'radar_tendencias', escreva um
-     único parágrafo (2-4 frases) interpretando os termos em alta — conectando
-     com as notícias da edição quando houver relação. Use EXATAMENTE os
-     índices (0-100) e percentuais fornecidos no radar; NUNCA invente ou
-     re-aproxime números. Se não houver radar no digest, passe string vazia.
+    - analise_tendencias: SE o digest contiver 'radar_tendencias', escreva um
+      único parágrafo (2-4 frases) interpretando os termos em alta — conectando
+      com as notícias da edição quando houver relação. Use EXATAMENTE os
+      índices (0-100) e percentuais fornecidos no radar; NUNCA invente ou
+      re-aproxime números. Se não houver radar no digest, passe string vazia.
+    - analise_narrativas: SE o digest contiver 'youtube_videos', escreva a
+      'Análise de Narrativas' — um único parágrafo (3-4 frases) dizendo QUEM
+      está falando os termos em alta (cite os canais exatamente como estão no
+      digest) e qual TOM predomina (use o nome exato do tom classificado, ex.
+      'nacionalista_estatal'). Não invente canais nem tons. Sem vídeos no
+      digest, passe string vazia.
 Não escreva textos fora da chamada salvar_editorial."""
 
 
@@ -186,16 +209,70 @@ _PROMPT_DIRECTO = (
     '  "destaques_por_tema": {"chave_tema": "texto de 2-3 frases"},\n'
     '  "titulo_capa": "MANCHETE EM CAIXA ALTA (até 24 caracteres)",\n'
     '  "subtitulo_capa": "frase de subtítulo",\n'
-    '  "analise_tendencias": "parágrafo único ou string vazia"\n'
+    '  "analise_tendencias": "parágrafo único ou string vazia",\n'
+    '  "analise_narrativas": "parágrafo de Análise de Narrativas ou string vazia"\n'
     "}\n"
     "Regras: panorama com 2-3 parágrafos coesos; destaques por tema com 2-3 frases "
     "usando as chaves do digest; título em caixa alta até 24 caracteres.\n"
     "analise_tendencias: obrigatório APENAS se o digest tiver 'radar_tendencias' — "
     "um parágrafo único (2-4 frases) interpretando o radar, citando os números "
     "EXATAMENTE como fornecidos (nunca invente índices/percentuais) e conectando "
-    "com as notícias quando fizer sentido. Sem radar: string vazia.\n\n"
+    "com as notícias quando fizer sentido. Sem radar: string vazia.\n"
+    "analise_narrativas: obrigatório APENAS se o digest tiver 'youtube_videos' — "
+    "um parágrafo único (3-4 frases) dizendo QUEM está falando os termos em alta "
+    "(cite os canais exatamente como estão no digest) e qual TOM predomina (use o "
+    "nome exato do tom; ex. 'nacionalista_estatal'). Não invente canais nem tons. "
+    "Sem vídeos: string vazia.\n\n"
     "DIGEST DA EDIÇÃO:\n{digest}"
 )
+
+
+def _sacar_json(conteudo):
+    """Extrai o objeto JSON da resposta do chat, mesmo com pensamento solto.
+
+    Caminho 1: content é JSON puro (ou string duplamente codificada) — parse
+    direto. Caminho 2 (resgate): modelos reasoning costumam cercar o JSON de
+    pensamento; scanner por chaves balanceadas (respeita strings/escapes)
+    recupera o primeiro '{...}'. Falha => RuntimeError (degradação editorial).
+    """
+    texto = str(conteudo or "")
+    try:
+        bruto = json.loads(texto)
+        return json.loads(bruto) if isinstance(bruto, str) else bruto
+    except json.JSONDecodeError:
+        pass
+    texto = re.sub(r"<think(?:ing)?>.*?</think(?:ing)?>", "", texto,
+                   flags=re.DOTALL | re.IGNORECASE)
+    texto = re.sub(r"</?(think(?:ing)?|reasoning|output)>", "", texto,
+                   flags=re.IGNORECASE | re.DOTALL)
+    inicio = texto.find("{")
+    if inicio < 0:
+        raise RuntimeError("sem objeto JSON na resposta")
+    profundidade, em_string, esc_antes = 0, False, False
+    for j in range(inicio, len(texto)):
+        ch = texto[j]
+        if em_string:
+            if esc_antes:
+                esc_antes = False
+            elif ch == "\\":
+                esc_antes = True
+            elif ch == '"':
+                em_string = False
+            continue
+        if ch == '"':
+            em_string = True
+        elif ch == "{":
+            profundidade += 1
+        elif ch == "}":
+            profundidade -= 1
+            if profundidade == 0:
+                candidato = texto[inicio:j + 1]
+                try:
+                    bruto = json.loads(candidato)
+                except json.JSONDecodeError as exc:
+                    raise RuntimeError(f"json corrompido após extração: {exc}")
+                return json.loads(bruto) if isinstance(bruto, str) else bruto
+    raise RuntimeError("JSON não fechado na resposta")
 
 
 def _via_directo(config, api_key, digest):
@@ -206,14 +283,19 @@ def _via_directo(config, api_key, digest):
     dig["_legenda_chaves"] = confirm
     base = (config.get("openrouter") or {}).get("endpoint_base", "https://openrouter.ai/api")
     payload = {
-        "model": conf.get("modelo", "minimax/minimax-m3.1-flash:free"),
+        "model": conf.get("modelo", "nvidia/nemotron-3.5-super-vl:free"),
         "temperature": 0.4,
-        # alto: modelos com raciocínio (MiniMax M3.1) gastam tokens de
-        # pensamento antes do JSON; teto baixo => content None
-        "max_tokens": int(conf.get("max_tokens", 3000)),
+        # alto: modelos reasoning gastam tokens de pensamento antes do JSON;
+        # teto baixo => content None (aumente editorial.max_tokens se precisar)
+        "max_tokens": int(conf.get("max_tokens", 4500)),
         "response_format": {"type": "json_object"},
-        "messages": [{"role": "user", "content": _PROMPT_DIRECTO.format(
-            digest=json.dumps(dig, ensure_ascii=False))}],
+        # Nemotron reasoning-on por padrão: desliga no payload (o modelo lista
+        # 'reasoning'/'include_reasoning' nos params do catálogo OpenRouter).
+        "reasoning": {"enabled": False},
+        "include_reasoning": False,
+        # replace, não format: o template tem chaves literais do exemplo JSON
+        # (str.format() as interpreta como campos → KeyError '\n  "panorama_geral"')
+        "messages": [{"role": "user", "content": _PROMPT_DIRECTO.replace("{digest}", json.dumps(dig, ensure_ascii=False))}],
     }
     resp = ort.post_json(f"{base}/v1/chat/completions", payload, api_key,
                          tentativas=int(conf.get("tentativas", 5)),
@@ -227,9 +309,7 @@ def _via_directo(config, api_key, digest):
             f"resposta sem conteúdo (finish_reason={motivo}); "
             "aumente editorial.max_tokens"
         )
-    bruto = json.loads(conteudo)
-    if isinstance(bruto, str):  # JSON duplamente codificado
-        bruto = json.loads(bruto)
+    bruto = _sacar_json(conteudo)
     return _padronizar(bruto, config)
 
 
@@ -251,6 +331,7 @@ def _padronizar(bruto, config):
         "titulo_capa": (bruto.get("titulo_capa") or "").strip() or None,
         "subtitulo_capa": (bruto.get("subtitulo_capa") or "").strip() or None,
         "analise_tendencias": (bruto.get("analise_tendencias") or "").strip() or None,
+        "analise_narrativas": (bruto.get("analise_narrativas") or "").strip() or None,
     }
 
 

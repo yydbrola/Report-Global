@@ -8,6 +8,7 @@ Uso:
     python main.py --no-email          não cria rascunho no Gmail
     python main.py --no-sumario        pula resumo por artigo
     python main.py --trends            inclui o Radar de Tendências (Trends API)
+    python main.py --youtube           vídeos por termo em alta do Radar (yt-dlp)
     python main.py --email-only        re-envia o último PDF (teste de Gmail)
     python main.py --limit 10          cap de artigos para teste barato
     python main.py --config CAMINHO    config alternativo (default: config.yaml)
@@ -28,7 +29,7 @@ import yaml
 
 from modules import (classifier_jev, editorial_generator, extractor,
                      gmail_sender, openrouter_client as ort, pdf_builder,
-                     scraper, summarizer, trends_scraper)
+                     scraper, summarizer, trends_scraper, youtube_scraper)
 
 RAIZ = Path(__file__).resolve().parent
 DIR_DADOS = RAIZ / "data"
@@ -85,7 +86,9 @@ def _herdar_cache(artigo, cache, ttl_dias):
     reg = cache.get(_chave_url(artigo.get("url", ""))) or {}
     bloco = reg.get("tema")
     if bloco and _cache_valido(bloco, ttl_dias):
-        for campo in ("tema", "tema_confianca", "tema_probabilidades", "tema_modelo"):
+        for campo in ("tema", "tema_confianca", "tema_probabilidades",
+                      "tema_modelo", "tema_forcado", "tom", "tom_confianca",
+                      "tom_probabilidades", "tom_modelo", "tom_forcado"):
             if campo in bloco:
                 artigo[campo] = bloco[campo]
         artigo["custo_classificacao"] = 0.0
@@ -152,7 +155,9 @@ def passo_classificar(artigos, config, api_key, cache, ttl_dias):
             if artigo.get("tema"):
                 _gravar_cache(cache, artigo,
                               ("tema", "tema_confianca", "tema_probabilidades",
-                               "tema_modelo"), "tema")
+                               "tema_modelo", "tema_forcado", "tom",
+                               "tom_confianca", "tom_probabilidades",
+                               "tom_modelo", "tom_forcado"), "tema")
                 suc += 1
         time.sleep(DELAY_INTERCHAMADAS)
     log.info("classificação concluída: %d ok, %d falha(s)", suc, falha)
@@ -201,6 +206,7 @@ def _resumo_execucao(artigos, editorial, radar=None):
         "artigos": len(artigos),
         "com_tema_especifico": com_tema_especifico,
         "com_resumo": com_resumo,
+        "videos_youtube": sum(1 for a in artigos if a.get("tipo_fonte") == "youtube"),
         "custo_total_usd": round(custo, 6),
         "editorial_ativo": bool(editorial.get("ativo")),
         "radar_tendencias": bool(radar),
@@ -216,6 +222,7 @@ def main(argv=None):
     parser.add_argument("--email-only", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--trends", action="store_true")
+    parser.add_argument("--youtube", action="store_true")
     parser.add_argument("--limit", type=int, default=None)
     args = parser.parse_args(argv)
 
@@ -263,17 +270,27 @@ def main(argv=None):
     if em_cache:
         log.info("%d artigo(s) reaproveitado(s) do cache (TTL %d dias)", em_cache, ttl)
 
-    artigos = passo_classificar(artigos, config, api_key, cache, ttl)
-    artigos = passo_resumir(artigos, config, api_key, cache, ttl,
-                            desativar=args.no_sumario)
-    _salvar_cache(cache)
-
+    # Radar ANTES da classificação: o --youtube precisa dos termos em alta.
     radar_tendencias = None
     if args.trends:
         try:
             radar_tendencias = trends_scraper.coletar_tendencias(config)
         except Exception as exc:
             log.warning("radar de tendências falhou (PDF sai sem Radar): %s", exc)
+
+    if args.youtube:
+        if radar_tendencias:
+            videos = youtube_scraper.coletar_videos(radar_tendencias, config)
+            for video in videos:
+                _herdar_cache(video, cache, ttl)
+            artigos.extend(videos)
+        else:
+            log.warning("youtube: --youtube exige --trends; sem termos em alta para buscar")
+
+    artigos = passo_classificar(artigos, config, api_key, cache, ttl)
+    artigos = passo_resumir(artigos, config, api_key, cache, ttl,
+                            desativar=args.no_sumario)
+    _salvar_cache(cache)
 
     editorial = (
         {"ativo": False}

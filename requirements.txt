@@ -8,5 +8,7 @@ trafilatura>=1.8.0
 reportlab>=4.0.0
 simplegmail>=5.0.0
 trendsapi-youtube>=1.0.1
+yt-dlp>=2024.10.0
+youtube-transcript-api>=1.0.0
 PyYAML>=6.0
 smolagents[openai]>=1.21.0

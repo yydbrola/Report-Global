@@ -16,16 +16,17 @@ jev:
 
 sumario:
   ativo: true
-  # minimax/minimax-m3.1-flash:free foi aposentado pelo OpenRouter em 22/10/2026;
-  # substituto oficial (pago, ~centavos por edição): minimax/minimax-m3.1-flash
-  modelo: "minimax/minimax-m3.1-flash"
+  # política: apenas modelos gratuitos (decisão do usuário, 22/10/2026).
+  # minimax/minimax-m3.1-flash:free foi aposentado pelo OpenRouter em 22/10/2026.
+  modelo: "nvidia/nemotron-3-ultra-550b-a55b:free"
   tentativas: 5
   max_caracteres_texto_base: 80
 
 editorial:
   ativo: true
-  motor: "smolagents"          # smolagents | directo
-  modelo: "minimax/minimax-m3.1-flash"   # :free aposentado em 22/10/2026
+  motor: "directo"          # smolagents | directo (smolagents instável c/ Nemotron)
+  modelo: "nvidia/nemotron-3.5-super-vl:free"   # 1M ctx; reasoning desativado no payload
+  max_tokens: 4500          # teto explicito (payload do modo directo)
   max_passos: 8
   titulo_capa_fallback: "O MUNDO EM\nMOVIMENTO"
   subtitulo_capa_fallback: "Sinais diplomáticos, riscos estratégicos e os temas que moldam a agenda internacional."
@@ -45,6 +46,14 @@ youtube_trends:
   top_trends_ttl_horas: 24       # cache do feed ao vivo
   limite_top_trends: 10
   janela_variacao_dias: 30       # exibida como "vs. 30 dias"
+
+# Busca dinâmica de vídeos: cada termo com status 'alta' no Radar dispara
+# ytsearch{n} no YouTube (yt-dlp) e a transcrição vira o corpo do artigo.
+youtube_busca:
+  max_videos_total: 8            # teto global por execução (custo/tamanho do PDF)
+  top_n_videos: 3                # quantos vídeos por termo em alta
+  min_views: 1000                # descarta vídeos com poucas visualizações
+  dias_retroativos: 2            # só vídeos publicados nos últimos N dias
 
 cache:
   ativo: true
@@ -181,4 +190,22 @@ categorias:
   outros:
     nome: "Outros"
     rotulo: "GERAL"
-    criterio_jev: "Articles that do not clearly fit into any of the specific categories above, such as cultural exchanges, sports, or miscellaneous news."
+    criterio_jev: "News mainly about sports, entertainment, culture or lifestyle (including celebrity/travel content), purely domestic news with no international spillover, or any topic not covered by the specific categories."
+
+# Tons do discurso: segunda pergunta JEV, enviada somente para artigos
+# do YouTube (tipo_fonte == 'youtube'); notícias de texto ficam sem tom.
+tons:
+  neutro_informativo:
+    criterio: "Straightforward reporting, factual, objective tone, no strong adjectives."
+  critico_oposicao:
+    criterio: "Criticism of government, policies, or institutions, highlighting failures or scandals."
+  nacionalista_estatal:
+    criterio: "Patriotic tone, justifying state actions, praising national achievements, state-aligned."
+  alarmista_crise:
+    criterio: "Fear-inducing language, focusing on chaos, emergencies, threats, or imminent crises."
+  diplomatico_oficial:
+    criterio: "Formal, institutional tone, resembling official statements, press releases, or diplomatic speak."
+  sensacionalista_popular:
+    criterio: "Colloquial, exaggerated language, focusing on drama or shock value to generate clicks."
+  outros_nao_classificado:
+    criterio: "The tone is unclear, mixed, or does not fit any of the above."

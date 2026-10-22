@@ -83,6 +83,11 @@ def montar_dados(artigos, config, editorial, data_execucao=None, dir_dados="data
                 "confianca": int(round(confianca * 100))
                             if isinstance(confianca, (int, float)) else None,
                 "link": a.get("url", ""),
+                "tipo_fonte": a.get("tipo_fonte"),
+                "canal": a.get("canal"),
+                "views": a.get("views"),
+                "engajamento_pct": a.get("engajamento_pct"),
+                "tom": a.get("tom"),
             })
         tematicas.append({
             "nome": info.get("nome", chave),
@@ -107,6 +112,8 @@ def montar_dados(artigos, config, editorial, data_execucao=None, dir_dados="data
         "panorama_geral": [p for p in (editorial.get("panorama_geral") or [])
                            if editorial_ativo and str(p).strip()],
         "radar_tendencias": radar_tendencias,
+        "analise_narrativas": (editorial.get("analise_narrativas") or "")
+                              if editorial_ativo else "",
         "tematicas": tematicas,
     }
     return dados

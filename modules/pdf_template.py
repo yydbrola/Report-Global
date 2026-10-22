@@ -216,6 +216,52 @@ def radar_tendencias_flowables(radar, st):
     return [KeepTogether(seguido)]
 
 
+def _fmt_views(valor):
+    """150000 -> '150k'; 1200000 -> '1.2M'; inválido/zero -> '—'."""
+    if not isinstance(valor, (int, float)) or valor <= 0:
+        return '—'
+    if valor >= 1_000_000:
+        return f'{valor / 1_000_000:.1f}M'
+    if valor >= 1_000:
+        return f'{valor / 1_000:.0f}k'
+    return str(int(valor))
+
+
+def _tarja_youtube(artigo, st):
+    """'VÍDEO | canal | Views: 150k | Engajamento: 4,5% | Tom: Nacionalista'."""
+    pedacos = ['VÍDEO', str(artigo.get('canal') or artigo.get('fonte') or 'YouTube'),
+               f"Views: {_fmt_views(artigo.get('views'))}"]
+    eng = artigo.get('engajamento_pct')
+    if isinstance(eng, (int, float)) and eng > 0:
+        pedacos.append(f"Engajamento: {eng:.1f}%".replace('.', ','))
+    tom = artigo.get('tom')
+    if tom:
+        pedacos.append('Tom: ' + esc(str(tom).split('_')[0].capitalize()))
+    return Paragraph(' &nbsp;&nbsp;|&nbsp;&nbsp; '.join(pedacos), st['panel_label'])
+
+
+def narrativas_flowables(texto, st):
+    """Seção 'Análise de Narrativas' (Goal 1.5): tom do discurso dos vídeos.
+
+    Mesma linguagem visual do box do Radar. Sem texto → [] (não existe).
+    """
+    if not str(texto or '').strip():
+        return []
+    caixa = Table([[[
+        Paragraph('ANÁLISE DE NARRATIVAS', st['panel_label']),
+        Paragraph(esc(texto), st['panel_body'])]]],
+        colWidths=[174*mm], hAlign='LEFT')
+    caixa.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), PALE),
+        ('LINEBEFORE', (0,0), (0,0), 3, NAVY),
+        ('LEFTPADDING', (0,0), (-1,-1), 12),
+        ('RIGHTPADDING', (0,0), (-1,-1), 12),
+        ('TOPPADDING', (0,0), (-1,-1), 9),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+    ]))
+    return [KeepTogether([caixa, Spacer(1, 9*mm)])]
+
+
 def artigo_flowable(artigo, rotulo, st):
     titulo = Paragraph(esc(artigo.get('titulo', 'Sem título')), st['article_title'])
     resumo = Paragraph(esc(artigo.get('resumo', 'Resumo não disponível.')), st['summary'])
@@ -239,7 +285,10 @@ def artigo_flowable(artigo, rotulo, st):
         link = Paragraph('LINK NÃO DISPONÍVEL', st['meta'])
 
     # Linha editorial: filete vertical e conteúdo, sem cartões arredondados.
-    inner = [Paragraph(esc(rotulo.upper()), st['article_kicker']), titulo, resumo, meta, link]
+    inner = [Paragraph(esc(rotulo.upper()), st['article_kicker']), titulo, resumo,
+             meta, link]
+    if artigo.get('tipo_fonte') == 'youtube':
+        inner.insert(1, _tarja_youtube(artigo, st))
     t = Table([['', inner]], colWidths=[3*mm, 171*mm], hAlign='LEFT')
     t.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (0,0), ACCENT),
@@ -361,6 +410,9 @@ def gerar_relatorio(dados, caminho_saida='relatorio_relacoes_internacionais_jorn
 
     # RADAR DE TENDÊNCIAS — logo após a capa; só existe quando há dados
     story.extend(radar_tendencias_flowables(dados.get('radar_tendencias'), st))
+
+    # ANÁLISE DE NARRATIVAS (Goal 1.5) — segue o Radar; só com texto da IA
+    story.extend(narrativas_flowables(dados.get('analise_narrativas'), st))
 
     # PANORAMA GERAL (só com editorial ativo e texto)
     if dados.get('panorama_geral'):

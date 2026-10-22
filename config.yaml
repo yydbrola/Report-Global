@@ -29,7 +29,7 @@ editorial:
   subtitulo_capa_fallback: "Sinais diplomáticos, riscos estratégicos e os temas que moldam a agenda internacional."
 
 email:
-  destino: "yvensyan@gmail.com"
+  destino: ""                   # preferir a variável de ambiente EMAIL_DESTINO
   modo: draft                   # draft | send
   client_secret: "client_secret.json"
   arquivo_credenciais: "gmail_token.json"

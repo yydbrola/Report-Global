@@ -1,0 +1,115 @@
+# Configuração do pipeline de curadoria de notícias internacionais (Visão Global)
+
+user_agent: "VisaoGlobalPipeline/1.0 (uso editorial local; robots respeitado)"
+
+# Endpoint base parametrizado para facilitar migração futura de provedor
+# (JEV usa <base>/alpha/decisions; chat usa <base>/v1/chat/completions)
+# Migre alterando este valor apenas.
+openrouter:
+  endpoint_base: "https://openrouter.ai/api"
+
+jev:
+  modelo: "typesafe/jev-1.13"
+  tentativas: 5
+  backoff_base_seg: 1.0
+  backoff_max_seg: 30.0
+
+sumario:
+  ativo: true
+  modelo: "minimax/minimax-m3.1-flash:free"
+  tentativas: 5
+  max_caracteres_texto_base: 80
+
+editorial:
+  ativo: true
+  motor: "smolagents"          # smolagents | directo
+  modelo: "minimax/minimax-m3.1-flash:free"
+  max_passos: 8
+  titulo_capa_fallback: "O MUNDO EM\nMOVIMENTO"
+  subtitulo_capa_fallback: "Sinais diplomáticos, riscos estratégicos e os temas que moldam a agenda internacional."
+
+email:
+  destino: ""                   # vazio = usa env EMAIL_DESTINO
+  modo: draft                   # draft | send
+  client_secret: "client_secret.json"
+  arquivo_credenciais: "gmail_token.json"
+
+cache:
+  ativo: true
+  ttl_dias: 7
+
+limites:
+  max_artigos_por_fonte: 25
+  max_artigos_total: 60
+  delay_segundos: 2.5
+  truncar_chars: 6000
+
+fontes:
+  - nome: "BBC News"
+    url: "http://feeds.bbci.co.uk/news/world/rss.xml"
+    tipo: rss
+    ativo: true
+  - nome: "The Guardian"
+    url: "https://www.theguardian.com/world/rss"
+    tipo: rss
+    ativo: true
+  - nome: "Al Jazeera"
+    url: "https://www.aljazeera.com/xml/rss/all.xml"
+    tipo: rss
+    ativo: true
+  - nome: "UN News"
+    url: "https://news.un.org/feed/subscribe/en/news/all/rss.xml"
+    tipo: rss
+    ativo: true
+  - nome: "Deutsche Welle"
+    url: "https://rss.dw.com/rdf/rss-en-world"
+    tipo: rss
+    ativo: true
+  - nome: "FRANCE 24"
+    url: "https://www.france24.com/en/rss"
+    tipo: rss
+    ativo: true
+  - nome: "The New York Times World"
+    url: "https://rss.nytimes.com/services/xml/rss/nyt/World.xml"
+    tipo: rss
+    ativo: false
+  #- nome: "Seção World (HTML)"
+  #  url: "https://www.exemplo.com/world"
+  #  tipo: html
+  #  ativo: false
+
+# Categorias temáticas na ORDEM em que aparecem no PDF.
+# criterio_jev em inglês: são as descrições enviadas ao modelo JEV.
+categorias:
+  conflitos_armados:
+    nome: "Conflitos Armados"
+    rotulo: "CONFLITOS"
+    criterio_jev: "Active or ongoing armed conflicts between states or within states: battles, military offensives, ceasefires, sieges, escalations or de-escalations of hostilities."
+  grandes_potencias:
+    nome: "Geopolítica de Grandes Potências"
+    rotulo: "GEOPOLÍTICA"
+    criterio_jev: "Relations among major powers such as the United States, China, Russia and the EU acting as a bloc: great-power competition, bloc formation, nuclear policy, arms-control negotiations."
+  economia_comercio:
+    nome: "Economia & Comércio Internacional"
+    rotulo: "ECONOMIA"
+    criterio_jev: "International trade, tariffs, trade agreements, geopolitically relevant sanctions with economic impact, cross-border investment, infrastructure deals across countries."
+  multilaterais:
+    nome: "Organizações Multilaterais"
+    rotulo: "MULTILATERAL"
+    criterio_jev: "United Nations bodies and agencies, UN Security Council and General Assembly, G7, G20, BRICS, European Union institutions, NATO, and other international organizations and summits."
+  diplomacia_bilateral:
+    nome: "Diplomacia Bilateral"
+    rotulo: "DIPLOMACIA"
+    criterio_jev: "State visits, bilateral summits, negotiations between two governments, recognition or establishment of diplomatic relations, and bilateral treaties."
+  seguranca_defesa:
+    nome: "Segurança & Defesa"
+    rotulo: "DEFESA"
+    criterio_jev: "Defense policy, military exercises, weapons systems, defense budgets, intelligence affairs, terrorism, coups, and threats to state security that do not involve an ongoing armed conflict."
+  temas_globais:
+    nome: "Temas Globais"
+    rotulo: "TEMAS GLOBAIS"
+    criterio_jev: "Transnational issues such as climate change and environment, forced displacement and migration, global health and pandemics, energy transitions, and food security."
+  outros:
+    nome: "Outros/Tangencial"
+    rotulo: "GERAL"
+    criterio_jev: "International news that does not fit any of the other themes: culture, sports, science without policy relevance, or clearly domestic news of a single country already covered above."

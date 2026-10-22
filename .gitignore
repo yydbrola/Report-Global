@@ -1,0 +1,18 @@
+# Credenciais e segredos (nunca commitar)
+client_secret*.json
+gmail_token.json
+.env
+*.key
+
+# Artefatos locais do pipeline
+output/
+data/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/

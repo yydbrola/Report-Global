@@ -24,7 +24,7 @@ _RESULTADO = {"salvo": False, "editorial": {}}
 _DADOS_EDICAO = {}
 
 
-def _preparar_digest(artigos, config):
+def _preparar_digest(artigos, config, radar_tendencias=None):
     """Imagem compacta da edição para o agente/editor decidir o que destacar."""
     cats = config.get("categorias") or {}
     digest = {"artigos_analisados": 0, "temas": []}
@@ -55,6 +55,18 @@ def _preparar_digest(artigos, config):
             "quantidade": len(lista),
             "artigos": atos,
         })
+    if radar_tendencias and radar_tendencias.get("termos"):
+        digest["radar_tendencias"] = {
+            "termos": [{
+                "termo": t.get("termo"),
+                "indice_atual": t.get("indice_atual"),
+                "variacao": t.get("variacao"),
+                "periodo": t.get("periodo"),
+                "status": t.get("status"),
+            } for t in radar_tendencias["termos"]],
+            "top_trends_youtube": [str(rotulo) for _r, rotulo
+                                   in (radar_tendencias.get("top_trends") or [])][:6],
+        }
     _DADOS_EDICAO.clear()
     _DADOS_EDICAO.update(digest)
     return digest
@@ -76,13 +88,15 @@ def _ferramentas():
 
     @tool
     def salvar_editorial(panorama_geral: str, destaques_por_tema: str,
-                         titulo_capa: str, subtitulo_capa: str) -> str:
+                         titulo_capa: str, subtitulo_capa: str,
+                         analise_tendencias: str = "") -> str:
         """Entrega o corpo editorial estruturado da edição.
         Args:
             panorama_geral: JSON array com 2-3 parágrafos em português do Brasil (strings).
             destaques_por_tema: JSON object mapeando a chave da temática para um texto de destaque (2-3 frases; omita temas irrelevantes).
             titulo_capa: manchete da capa em CAIXA ALTA, no máximo 24 caracteres, pode ter '\n' para duas linhas.
             subtitulo_capa: subtítulo da capa em uma frase (português do Brasil).
+            analise_tendencias: OBRIGATÓRIO apenas se o digest tiver 'radar_tendencias': um único parágrafo (2-4 frases) interpretando o Radar (use EXATAMENTE os índices/percentuais fornecidos; nunca invente números). Caso contrário, string vazia.
         Returns:
             'salvo' em sucesso ou 'erro: motivo'.
         """
@@ -99,6 +113,7 @@ def _ferramentas():
                                     for k, v in (destaques_brutos or {}).items() if str(v).strip()},
             "titulo_capa": (titulo_capa or "").strip() or None,
             "subtitulo_capa": (subtitulo_capa or "").strip() or None,
+            "analise_tendencias": (analise_tendencias or "").strip() or None,
         }
         _RESULTADO["salvo"] = True
         return "salvo"
@@ -140,6 +155,11 @@ Passos:
    - titulo_capa: manchete da capa em CAIXA ALTA, até 24 caracteres; pode usar
      '\\n' para separar em duas linhas. Deve sintetizar o espírito da edição.
    - subtitulo_capa: uma frase de subtítulo em português do Brasil.
+   - analise_tendencias: SE o digest contiver 'radar_tendencias', escreva um
+     único parágrafo (2-4 frases) interpretando os termos em alta — conectando
+     com as notícias da edição quando houver relação. Use EXATAMENTE os
+     índices (0-100) e percentuais fornecidos no radar; NUNCA invente ou
+     re-aproxime números. Se não houver radar no digest, passe string vazia.
 Não escreva textos fora da chamada salvar_editorial."""
 
 
@@ -165,10 +185,15 @@ _PROMPT_DIRECTO = (
     '  "panorama_geral": ["parágrafo 1", "parágrafo 2"],\n'
     '  "destaques_por_tema": {"chave_tema": "texto de 2-3 frases"},\n'
     '  "titulo_capa": "MANCHETE EM CAIXA ALTA (até 24 caracteres)",\n'
-    '  "subtitulo_capa": "frase de subtítulo"\n'
+    '  "subtitulo_capa": "frase de subtítulo",\n'
+    '  "analise_tendencias": "parágrafo único ou string vazia"\n'
     "}\n"
     "Regras: panorama com 2-3 parágrafos coesos; destaques por tema com 2-3 frases "
-    "usando as chaves do digest; título em caixa alta até 24 caracteres.\n\n"
+    "usando as chaves do digest; título em caixa alta até 24 caracteres.\n"
+    "analise_tendencias: obrigatório APENAS se o digest tiver 'radar_tendencias' — "
+    "um parágrafo único (2-4 frases) interpretando o radar, citando os números "
+    "EXATAMENTE como fornecidos (nunca invente índices/percentuais) e conectando "
+    "com as notícias quando fizer sentido. Sem radar: string vazia.\n\n"
     "DIGEST DA EDIÇÃO:\n{digest}"
 )
 
@@ -225,16 +250,17 @@ def _padronizar(bruto, config):
         "destaques_por_tema": destaques,
         "titulo_capa": (bruto.get("titulo_capa") or "").strip() or None,
         "subtitulo_capa": (bruto.get("subtitulo_capa") or "").strip() or None,
+        "analise_tendencias": (bruto.get("analise_tendencias") or "").strip() or None,
     }
 
 
-def gerar_editorial(artigos, config, api_key):
+def gerar_editorial(artigos, config, api_key, radar_tendencias=None):
     """Devolve o editorial da edição; nunca levanta — erro significa 'sem editorial'."""
     config_ed = config.get("editorial") or {}
     if not config_ed.get("ativo", True):
         log.info("editorial desativado no config; pulando camada editorial")
         return {"ativo": False}
-    digest = _preparar_digest(artigos, config)
+    digest = _preparar_digest(artigos, config, radar_tendencias)
     _RESULTADO["salvo"], _RESULTADO["editorial"] = False, {}
 
     motor = (config_ed.get("motor") or "smolagents").lower()

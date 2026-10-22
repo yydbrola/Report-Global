@@ -55,7 +55,8 @@ def _salvar_proxima_edicao(dir_dados, numero):
     arq.write_text(json.dumps({"proxima": numero + 1}, ensure_ascii=False), encoding="utf-8")
 
 
-def montar_dados(artigos, config, editorial, data_execucao=None, dir_dados="data"):
+def montar_dados(artigos, config, editorial, data_execucao=None, dir_dados="data",
+                 radar_tendencias=None):
     """Constrói o dicionário no contrato do pdf_template (sem gerar PDF)."""
     cats = config.get("categorias") or {}
     config_ed = config.get("editorial") or {}
@@ -105,20 +106,22 @@ def montar_dados(artigos, config, editorial, data_execucao=None, dir_dados="data
                            or "Análise diária da agenda internacional."),
         "panorama_geral": [p for p in (editorial.get("panorama_geral") or [])
                            if editorial_ativo and str(p).strip()],
+        "radar_tendencias": radar_tendencias,
         "tematicas": tematicas,
     }
     return dados
 
 
 def gerar(artigos, config, editorial, dir_saida="output", dir_dados="data",
-          data_execucao=None):
+          data_execucao=None, radar_tendencias=None):
     """Gera o PDF da edição e devolve o dict `dados` (com a chave extra 'pdf').
 
     O nº da edição é computado uma única vez aqui — chamadas separadas de
     montar_dados na mesma execução fazem o contador incrementar em dobro.
     """
     Path(dir_saida).mkdir(parents=True, exist_ok=True)
-    dados = montar_dados(artigos, config, editorial, data_execucao, dir_dados)
+    dados = montar_dados(artigos, config, editorial, data_execucao, dir_dados,
+                         radar_tendencias)
     data_ref = datetime.now(FUSO).strftime("%Y-%m-%d")
     caminho = Path(dir_saida) / f"relatorio_ri_{data_ref}.pdf"
 

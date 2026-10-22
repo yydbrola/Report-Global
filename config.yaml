@@ -16,14 +16,16 @@ jev:
 
 sumario:
   ativo: true
-  modelo: "minimax/minimax-m3.1-flash:free"
+  # minimax/minimax-m3.1-flash:free foi aposentado pelo OpenRouter em 22/10/2026;
+  # substituto oficial (pago, ~centavos por edição): minimax/minimax-m3.1-flash
+  modelo: "minimax/minimax-m3.1-flash"
   tentativas: 5
   max_caracteres_texto_base: 80
 
 editorial:
   ativo: true
   motor: "smolagents"          # smolagents | directo
-  modelo: "minimax/minimax-m3.1-flash:free"
+  modelo: "minimax/minimax-m3.1-flash"   # :free aposentado em 22/10/2026
   max_passos: 8
   titulo_capa_fallback: "O MUNDO EM\nMOVIMENTO"
   subtitulo_capa_fallback: "Sinais diplomáticos, riscos estratégicos e os temas que moldam a agenda internacional."
@@ -33,6 +35,16 @@ email:
   modo: draft                   # draft | send
   client_secret: "client_secret.json"
   arquivo_credenciais: "gmail_token.json"
+
+# Radar de tendências: interesse de busca no YouTube (Trends API, trendsapi.ai)
+# A chave vive em TRENDSAPI_KEY (env). Free tier: 100 req/mês, séries de 90 dias.
+youtube_trends:
+  geo: "BR"                      # registro: o endpoint do YouTube não aceita regionCode
+  termos_de_interesse: ["geopolítica", "conflito", "sanções", "eleições", "economia"]
+  atualizar_historico_dias: 7    # cache da série por termo
+  top_trends_ttl_horas: 24       # cache do feed ao vivo
+  limite_top_trends: 10
+  janela_variacao_dias: 30       # exibida como "vs. 30 dias"
 
 cache:
   ativo: true

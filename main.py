@@ -7,6 +7,7 @@ Uso:
     python main.py --no-editorial      PDF sem camada editorial
     python main.py --no-email          não cria rascunho no Gmail
     python main.py --no-sumario        pula resumo por artigo
+    python main.py --trends            inclui o Radar de Tendências (Trends API)
     python main.py --email-only        re-envia o último PDF (teste de Gmail)
     python main.py --limit 10          cap de artigos para teste barato
     python main.py --config CAMINHO    config alternativo (default: config.yaml)
@@ -27,7 +28,7 @@ import yaml
 
 from modules import (classifier_jev, editorial_generator, extractor,
                      gmail_sender, openrouter_client as ort, pdf_builder,
-                     scraper, summarizer)
+                     scraper, summarizer, trends_scraper)
 
 RAIZ = Path(__file__).resolve().parent
 DIR_DADOS = RAIZ / "data"
@@ -190,7 +191,7 @@ def passo_resumir(artigos, config, api_key, cache, ttl_dias, desativar=False):
     return artigos
 
 
-def _resumo_execucao(artigos, editorial):
+def _resumo_execucao(artigos, editorial, radar=None):
     com_tema_especifico = sum(
         1 for a in artigos if a.get("tema") and a["tema"] != "outros"
     )
@@ -202,6 +203,7 @@ def _resumo_execucao(artigos, editorial):
         "com_resumo": com_resumo,
         "custo_total_usd": round(custo, 6),
         "editorial_ativo": bool(editorial.get("ativo")),
+        "radar_tendencias": bool(radar),
     }
 
 
@@ -213,6 +215,7 @@ def main(argv=None):
     parser.add_argument("--no-sumario", action="store_true")
     parser.add_argument("--email-only", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--trends", action="store_true")
     parser.add_argument("--limit", type=int, default=None)
     args = parser.parse_args(argv)
 
@@ -265,18 +268,32 @@ def main(argv=None):
                             desativar=args.no_sumario)
     _salvar_cache(cache)
 
+    radar_tendencias = None
+    if args.trends:
+        try:
+            radar_tendencias = trends_scraper.coletar_tendencias(config)
+        except Exception as exc:
+            log.warning("radar de tendências falhou (PDF sai sem Radar): %s", exc)
+
     editorial = (
         {"ativo": False}
         if args.no_editorial
-        else editorial_generator.gerar_editorial(artigos, config, api_key)
+        else editorial_generator.gerar_editorial(
+            artigos, config, api_key, radar_tendencias=radar_tendencias)
     )
+    if radar_tendencias is not None:
+        radar_tendencias["texto_analise"] = (
+            (editorial or {}).get("analise_tendencias") or ""
+        )
 
     hoje_ext = datetime.now().strftime("%d/%m/%Y")
     dados_rel = pdf_builder.gerar(
         artigos, config, editorial,
         dir_saida=str(DIR_SAIDA), dir_dados=str(DIR_DADOS), data_execucao=hoje_ext,
+        radar_tendencias=radar_tendencias,
     )
-    dados_rel["resumo_execucao"] = _resumo_execucao(artigos, editorial)
+    dados_rel["resumo_execucao"] = _resumo_execucao(
+        artigos, editorial, radar=radar_tendencias)
 
     salvar_json(DIR_SAIDA / f"dados_{datetime.now().strftime('%Y-%m-%d')}.json", dados_rel)
 

@@ -135,6 +135,87 @@ def panorama_box(paragrafos, st):
     return t
 
 
+def barra_indice(indice, largura_mm=34):
+    """Barra 0-100 do interesse de busca, com o valor impresso ao lado."""
+    from reportlab.graphics.shapes import Drawing, Rect, String
+    largura = largura_mm * mm
+    altura = 4.2 * mm
+    d = Drawing(largura + 9*mm, altura)
+    d.add(Rect(0, 0, largura, altura,
+               fillColor=colors.HexColor('#EDEAE3'), strokeColor=None))
+    fill = ACCENT if indice >= 70 else (NAVY if indice >= 35 else MUTED)
+    d.add(Rect(0, 0, largura * max(0.0, min(100.0, indice)) / 100.0, altura,
+               fillColor=fill, strokeColor=None))
+    d.add(String(largura + 1.2*mm, altura - 3.4*mm, f"{int(round(indice))}",
+                 fontName='Helvetica-Bold', fontSize=7, fillColor=NAVY))
+    return d
+
+
+def radar_tendencias_flowables(radar, st):
+    """Seção 'Radar de tendências': índice de interesse + variação qualificada.
+
+    Recebe o contrato de main.py (dados['radar_tendencias']): texto_analise,
+    termos [{termo, indice_atual, variacao, periodo, status}], top_trends.
+    Sem dados/termos → retorna [] (a seção não existe no PDF).
+    """
+    termos = ((radar or {}).get('termos') or [])
+    if not termos:
+        return []
+    st_termo = ParagraphStyle('RadarTermo', fontName='Times-Bold', fontSize=11.5,
+                              leading=14, textColor=INK)
+    st_var = ParagraphStyle('RadarVariacao', fontName='Helvetica-Bold', fontSize=8.2,
+                            leading=11, textColor=INK)
+    useca = [Paragraph('LEITURA DO PÚBLICO', st['section_kicker']),
+             Paragraph('Radar de tendências', st['section']),
+             Paragraph('Interesse de busca no YouTube (escala 0-100). Variação em '
+                       'coral indica alta; em cinza, queda ou estabilidade.',
+                       st['theme_deck']),
+             HRFlowable(width='100%', thickness=1.1, color=INK,
+                        spaceBefore=0, spaceAfter=10)]
+    linhas = [[Paragraph('TERMO', st['cover_meta_label']),
+               Paragraph('INTERESSE (0-100)', st['cover_meta_label']),
+               Paragraph('VARIAÇÃO', st['cover_meta_label']),
+               Paragraph('JANELA', st['cover_meta_label'])]]
+    for item in termos:
+        status = str(item.get('status') or '').lower()
+        alta = status == 'alta' or (not status and '+' in str(item.get('variacao', '')))
+        cor = '#B33A32' if alta else '#6D716F'
+        variacao = item.get('variacao', '—')
+        linhas.append([
+            Paragraph(esc(item.get('termo', '—')), st_termo),
+            barra_indice(item.get('indice_atual') or 0),
+            Paragraph(f'<font color="{cor}"><b>{esc(variacao)}</b></font>', st_var),
+            Paragraph(esc(item.get('periodo', '—')), st['meta']),
+        ])
+    tabela = Table(linhas, colWidths=[46*mm, 50*mm, 34*mm, 44*mm], hAlign='LEFT')
+    tabela.setStyle(TableStyle([
+        ('LINEABOVE', (0,0), (-1,0), 1.0, INK),
+        ('LINEBELOW', (0,-1), (-1,-1), .9, INK),
+        ('LINEBELOW', (0,0), (-1,-2), .45, RULE),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,-1), 7),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 7),
+        ('LEFTPADDING', (0,0), (0,-1), 0),
+    ]))
+    seguido = useca + [tabela]
+    if (radar or {}).get('texto_analise'):
+        caixa = Table([[[
+            Paragraph('O QUE O RADAR DIZ', st['panel_label']),
+            Paragraph(esc(radar['texto_analise']), st['panel_body'])]]],
+            colWidths=[174*mm], hAlign='LEFT')
+        caixa.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,-1), PALE),
+            ('LINEBEFORE', (0,0), (0,0), 3, ACCENT),
+            ('LEFTPADDING', (0,0), (-1,-1), 12),
+            ('RIGHTPADDING', (0,0), (-1,-1), 12),
+            ('TOPPADDING', (0,0), (-1,-1), 9),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+        ]))
+        seguido += [Spacer(1, 5*mm), caixa]
+    seguido.append(Spacer(1, 9*mm))
+    return [KeepTogether(seguido)]
+
+
 def artigo_flowable(artigo, rotulo, st):
     titulo = Paragraph(esc(artigo.get('titulo', 'Sem título')), st['article_title'])
     resumo = Paragraph(esc(artigo.get('resumo', 'Resumo não disponível.')), st['summary'])
@@ -277,6 +358,9 @@ def gerar_relatorio(dados, caminho_saida='relatorio_relacoes_internacionais_jorn
         ('BOTTOMPADDING', (0,0), (-1,-1), 4),
     ]))
     story.extend([teaser_table, PageBreak()])
+
+    # RADAR DE TENDÊNCIAS — logo após a capa; só existe quando há dados
+    story.extend(radar_tendencias_flowables(dados.get('radar_tendencias'), st))
 
     # PANORAMA GERAL (só com editorial ativo e texto)
     if dados.get('panorama_geral'):

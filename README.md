@@ -302,7 +302,36 @@ schtasks /Create /TN "VisaoGlobalBriefing" /SC DAILY /ST 07:30 ^
 
 ---
 
-## 10. Solução de problemas
+## 10. Testes de Qualidade (QA)
+
+A suíte valida o artefato **PDF** do pipeline (integridade, seções críticas,
+contagem de artigos) e o próprio relatório de testes. Padrão: rodada rápida e
+mockada (sem rede); o run real do pipeline é opt-in.
+
+```
+.venv\Scripts\pip.exe install -r requirements.txt   # inclui pypdf/pytest/playwright
+.venv\Scripts\playwright.exe install chromium        # navegador p/ fase visual (uma vez)
+python run_tests.py                                  # fases 1 e 3 (mock + visual)
+python run_tests.py --e2e                            # inclui o run REAL (--limit 2)
+```
+
+| Fase | O que faz | Artefato |
+|---|---|---|
+| 1 — Integridade (pypdf) | Gera um PDF via rota real do produto (`montar_dados` + template) com dados determinísticos e valida: PDF abre (≥4 páginas), capa com título da camada editorial, seções críticas ("Radar de tendências", "NARRATIVAS DIGITAIS", "Ficha Técnica da Edição"), e nº de artigos no PDF == nº no JSON de saída | `output/qa/report.html` |
+| 2 — E2E (opt-in) | Roda `main.py --trends --youtube --limit 2 --no-email` de verdade e repete as mesmas asserções sobre o artefato do dia (requer OPENROUTER_API_KEY no ambiente; usa cache e faz chamadas) | `output/qa/report_e2e.html` |
+| 3 — QA visual (Playwright) | Abre o `report.html` no Chromium headless, confere contagem `N passed` e ausência de falhas/erros, e tira a evidência em tela cheia | `output/qa/evidencia.png` |
+
+Notas:
+- A fase de mock não incrementa o contador de edições e não gasta API (o PDF
+  de prova é construído com fixtures determinísticas).
+- Para rodar tudo pelo pytest diretamente: `pytest tests -m "not e2e and not qa_report"`,
+  depois `pytest tests/test_qa_report.py` (fase visual exige `report.html` já gerado).
+- A evidência `evidencia.png` é gerada a cada execução — bom artefato para o
+  portfólio/case study.
+
+---
+
+## 11. Solução de problemas
 
 | Sintoma | Causa provável | Ação |
 |---|---|---|

@@ -272,28 +272,24 @@ def main(argv=None):
     )
 
     hoje_ext = datetime.now().strftime("%d/%m/%Y")
-    pdf_path = pdf_builder.gerar(
+    dados_rel = pdf_builder.gerar(
         artigos, config, editorial,
         dir_saida=str(DIR_SAIDA), dir_dados=str(DIR_DADOS), data_execucao=hoje_ext,
     )
-    dados_rel = pdf_builder.montar_dados(
-        artigos, config, editorial, data_execucao=hoje_ext, dir_dados=str(DIR_DADOS)
-    )
-    dados_rel["pdf"] = pdf_path
     dados_rel["resumo_execucao"] = _resumo_execucao(artigos, editorial)
 
     salvar_json(DIR_SAIDA / f"dados_{datetime.now().strftime('%Y-%m-%d')}.json", dados_rel)
 
     if not args.no_email:
         try:
-            gmail_sender.entregar(config, pdf_path, dados_rel)
+            gmail_sender.entregar(config, dados_rel.get("pdf"), dados_rel)
         except Exception as exc:
-            log.warning("entrega no Gmail falhou (PDF fica em %s): %s", pdf_path, exc)
+            log.warning("entrega no Gmail falhou (PDF fica em %s): %s", dados_rel.get("pdf"), exc)
 
     stats = dados_rel["resumo_execucao"]
     log.info("FIM — artigos %d | com tema %d | com resumo %d | custo US$ %.4f | PDF %s",
              stats["artigos"], stats["com_tema_especifico"], stats["com_resumo"],
-             stats["custo_total_usd"], pdf_path)
+             stats["custo_total_usd"], dados_rel.get("pdf"))
     return 0
 
 

@@ -144,13 +144,17 @@ def _coletar_html(fonte, usuario, limite, delay):
 
 
 def coletar(config, limite_total=None):
-    """Coleta todas as fontes ativas; retorna lista dedup por URL normalizada."""
+    """Coleta todas as fontes ativas em round-robin (1 de cada por vez).
+
+    Intercale os itens para que limites pequenos (ex.: --limit 10) tragam
+    diversidade de fontes em vez de drenar só o primeiro feed.
+    """
     usuario = config.get("user_agent", USER_AGENT_DEFAULT)
     limites = config.get("limites", {})
     max_por_fonte = int(limites.get("max_artigos_por_fonte", 25))
     delay = float(limites.get("delay_segundos", 2.5))
 
-    brutos, visto = [], set()
+    colhidas, visto = [], set()
     for fonte in config.get("fontes", []):
         if not fonte.get("ativo", True):
             continue
@@ -162,16 +166,30 @@ def coletar(config, limite_total=None):
         except Exception as exc:
             log.error("fonte %s falhou: %s", fonte.get("nome"), exc)
             continue
+        unicas = []
         for it in itens:
             chave = _normalizar_url(it["url"])
             if chave in visto:
                 continue
             visto.add(chave)
             it["url_normalizada"] = chave
-            brutos.append(it)
-        if limite_total and len(brutos) >= limite_total:
-            brutos = brutos[:limite_total]
+            unicas.append(it)
+        if unicas:
+            colhidas.append(unicas)
+
+    brutos = []
+    ponteiro = 0
+    while not (limite_total and len(brutos) >= limite_total):
+        acrescimo = False
+        for lista in colhidas:
+            if ponteiro < len(lista):
+                brutos.append(lista[ponteiro])
+                acrescimo = True
+                if limite_total and len(brutos) >= limite_total:
+                    break
+        if not acrescimo:
             break
+        ponteiro += 1
 
     log.info("Coleta concluída: %d artigos brutos de %d fontes ativas",
              len(brutos), sum(1 for f in config.get("fontes", []) if f.get("ativo", True)))

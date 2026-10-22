@@ -29,7 +29,7 @@ editorial:
   subtitulo_capa_fallback: "Sinais diplomáticos, riscos estratégicos e os temas que moldam a agenda internacional."
 
 email:
-  destino: ""                   # vazio = usa env EMAIL_DESTINO
+  destino: "yvensyan@gmail.com"
   modo: draft                   # draft | send
   client_secret: "client_secret.json"
   arquivo_credenciais: "gmail_token.json"
@@ -72,44 +72,101 @@ fontes:
   - nome: "The New York Times World"
     url: "https://rss.nytimes.com/services/xml/rss/nyt/World.xml"
     tipo: rss
-    ativo: false
-  #- nome: "Seção World (HTML)"
-  #  url: "https://www.exemplo.com/world"
-  #  tipo: html
-  #  ativo: false
+    ativo: true
+  - nome: "Folha de S.Paulo"
+    url: "https://feeds.folha.uol.com.br/mundo/rss091.xml"
+    tipo: rss
+    ativo: true
+  - nome: "Africanews"
+    url: "https://www.africanews.com/rss/"
+    tipo: rss
+    ativo: true
+  - nome: "Sydney Morning Herald"
+    url: "https://www.smh.com.au/rss/world.xml"
+    tipo: rss
+    ativo: true
+
+  # --- EXPANSÃO ORIENTE MÉDIO ---
+  - nome: "BBC Middle East"
+    url: "https://feeds.bbci.co.uk/news/world/middle_east/rss.xml"
+    tipo: rss
+    ativo: true
+  - nome: "Arab News"
+    url: "https://www.arabnews.com/cat/2/rss.xml"
+    tipo: rss
+    ativo: true
+
+  # --- EXPANSÃO CHINA ---
+  - nome: "SCMP - China"
+    url: "https://www.scmp.com/rss/4/feed"
+    tipo: rss
+    ativo: true
+  - nome: "SCMP - Diplomacy & Defence"
+    url: "http://www.scmp.com/rss/318199/feed"
+    tipo: rss
+    ativo: true
+
+  # --- EXPANSÃO JAPÃO ---
+  - nome: "The Japan Times"
+    url: "https://www.japantimes.co.jp/feed/topstories/"
+    tipo: rss
+    ativo: true
+  - nome: "Nikkei Asia"
+    url: "https://asia.nikkei.com/rss/feed/nar"
+    tipo: rss
+    ativo: true
+
+  # --- EXPANSÃO RÚSSIA ---
+  - nome: "The Moscow Times"
+    url: "https://www.themoscowtimes.com/rss/news"
+    tipo: rss
+    ativo: true
+  - nome: "TASS"
+    url: "http://tass.com/rss/v2.xml"
+    tipo: rss
+    ativo: true
 
 # Categorias temáticas na ORDEM em que aparecem no PDF.
 # criterio_jev em inglês: são as descrições enviadas ao modelo JEV.
+# Taxonomia MECE — Mutually Exclusive, Collectively Exhaustive.
 categorias:
-  conflitos_armados:
-    nome: "Conflitos Armados"
+  conflitos_guerras:
+    nome: "Conflitos e Guerras"
     rotulo: "CONFLITOS"
-    criterio_jev: "Active or ongoing armed conflicts between states or within states: battles, military offensives, ceasefires, sieges, escalations or de-escalations of hostilities."
-  grandes_potencias:
-    nome: "Geopolítica de Grandes Potências"
-    rotulo: "GEOPOLÍTICA"
-    criterio_jev: "Relations among major powers such as the United States, China, Russia and the EU acting as a bloc: great-power competition, bloc formation, nuclear policy, arms-control negotiations."
+    criterio_jev: "Active armed conflicts, wars, military invasions, terrorism, rebel groups, and violent civil unrest. Focus on physical violence and combat."
+  diplomacia_negociacoes:
+    nome: "Diplomacia e Negociações"
+    rotulo: "DIPLOMACIA"
+    criterio_jev: "Bilateral or multilateral talks, peace negotiations, state visits, treaties, diplomatic expulsions, and summits aimed at resolving disputes."
   economia_comercio:
-    nome: "Economia & Comércio Internacional"
+    nome: "Economia e Comércio"
     rotulo: "ECONOMIA"
-    criterio_jev: "International trade, tariffs, trade agreements, geopolitically relevant sanctions with economic impact, cross-border investment, infrastructure deals across countries."
-  multilaterais:
+    criterio_jev: "International trade deals, tariffs, economic sanctions, global markets, supply chains, energy crises, and cross-border financial policies."
+  seguranca_defesa:
+    nome: "Segurança e Defesa"
+    rotulo: "DEFESA"
+    criterio_jev: "Military alliances (like NATO), defense budgets, arms races, weapons deals, cybersecurity, espionage, and intelligence operations."
+  organizacoes_multilaterais:
     nome: "Organizações Multilaterais"
     rotulo: "MULTILATERAL"
-    criterio_jev: "United Nations bodies and agencies, UN Security Council and General Assembly, G7, G20, BRICS, European Union institutions, NATO, and other international organizations and summits."
-  diplomacia_bilateral:
-    nome: "Diplomacia Bilateral"
-    rotulo: "DIPLOMACIA"
-    criterio_jev: "State visits, bilateral summits, negotiations between two governments, recognition or establishment of diplomatic relations, and bilateral treaties."
-  seguranca_defesa:
-    nome: "Segurança & Defesa"
-    rotulo: "DEFESA"
-    criterio_jev: "Defense policy, military exercises, weapons systems, defense budgets, intelligence affairs, terrorism, coups, and threats to state security that do not involve an ongoing armed conflict."
-  temas_globais:
-    nome: "Temas Globais"
-    rotulo: "TEMAS GLOBAIS"
-    criterio_jev: "Transnational issues such as climate change and environment, forced displacement and migration, global health and pandemics, energy transitions, and food security."
+    criterio_jev: "Activities of the UN, EU, BRICS, G7, WTO, WHO, and global governance summits. Focus on institutional actions rather than bilateral talks."
+  direitos_humanos_migracao:
+    nome: "Direitos Humanos e Migração"
+    rotulo: "DIREITOS HUMANOS"
+    criterio_jev: "Refugee crises, asylum policies, human rights violations, humanitarian aid, international law regarding civilians, and social justice."
+  meio_ambiente_clima:
+    nome: "Meio Ambiente e Clima"
+    rotulo: "CLIMA"
+    criterio_jev: "Climate change summits (COP), international environmental treaties, carbon emissions, cross-border natural disasters, and green energy policies."
+  tecnologia_ciberespaco:
+    nome: "Tecnologia e Ciberespaço"
+    rotulo: "TECNOLOGIA"
+    criterio_jev: "AI regulations, semiconductor supply chains, space exploration, tech decoupling (US vs China), cyber warfare, and digital privacy."
+  politica_domestica_global:
+    nome: "Política Doméstica com Impacto Global"
+    rotulo: "POLÍTICA DOMÉSTICA"
+    criterio_jev: "Major elections in key countries, domestic protests affecting foreign policy, internal political crises, and leadership changes with international spillover."
   outros:
-    nome: "Outros/Tangencial"
+    nome: "Outros"
     rotulo: "GERAL"
-    criterio_jev: "International news that does not fit any of the other themes: culture, sports, science without policy relevance, or clearly domestic news of a single country already covered above."
+    criterio_jev: "Articles that do not clearly fit into any of the specific categories above, such as cultural exchanges, sports, or miscellaneous news."

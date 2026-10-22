@@ -112,14 +112,20 @@ def montar_dados(artigos, config, editorial, data_execucao=None, dir_dados="data
 
 def gerar(artigos, config, editorial, dir_saida="output", dir_dados="data",
           data_execucao=None):
-    """Gera o PDF da edição; devolve o caminho do arquivo."""
+    """Gera o PDF da edição e devolve o dict `dados` (com a chave extra 'pdf').
+
+    O nº da edição é computado uma única vez aqui — chamadas separadas de
+    montar_dados na mesma execução fazem o contador incrementar em dobro.
+    """
     Path(dir_saida).mkdir(parents=True, exist_ok=True)
-    dados = montar_dados(artigos, config, editorial, data_execucao)
+    dados = montar_dados(artigos, config, editorial, data_execucao, dir_dados)
     data_ref = datetime.now(FUSO).strftime("%Y-%m-%d")
     caminho = Path(dir_saida) / f"relatorio_ri_{data_ref}.pdf"
 
     pdf_template.gerar_relatorio(dados, str(caminho))
     numero_usado = int((dados.get("edicao") or "000").split("EDIÇÃO")[-1].strip())
     _salvar_proxima_edicao(dir_dados, numero_usado)
+    dados["pdf"] = str(caminho)
     log.info("PDF gerado: %s (edição %03d)", caminho, numero_usado)
-    return str(caminho)
+    return dados
+

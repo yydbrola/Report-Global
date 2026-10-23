@@ -7,11 +7,11 @@ gera um PDF editorial com design de jornal e deixa o relatório pronto como rasc
 no seu Gmail** — você só revisa e envia.
 
 ```text
-┌────────────┐  ┌───────────┐  ┌──────────────┐  ┌─────────┐  ┌───────────┐  ┌──────┐  ┌────────┐
+┌────────────┐  ┌───────────┐  ┌──────────────┐  ┌─────────┐  ┌───────────┐   ┌──────┐  ┌────────┐
 │ 1 COLETA   │→ │ 2 EXTRAÇÃO│→ │ 3 CLASSIFICA │→ │ 4 RESUMO│→ │ 5 EDITORIAL│→ │ 6 PDF│→ │ DRAFTS │
-│ RSS/HTML   │  │ newspaper3k│  │ JEV Choice   │  │ chat    │  │ smolagents │  │ Report│  │ Gmail  │
-│ round-robin│  │ trafilatura│  │ + confiança  │  │ PT-BR   │  │Agente +directo│ │ Lab  │  │ anexado│
-└────────────┘  └───────────┘  └──────────────┘  └─────────┘  └───────────┘  └──────┘  └────────┘
+│ RSS/HTML   │  │ newspaper3k│ │ JEV Choice   │  │ chat    │  │ smolagents │  │Report│  │ Gmail  │
+│ round-robin│  │ trafilatura│ │ + confiança  │  │ PT-BR   │  │Agente +directo│ Lab  │  │ anexado│
+└────────────┘  └───────────┘  └──────────────┘  └─────────┘  └───────────┘   └──────┘  └────────┘
 `scraper.py`   `extractor.py`  `classifier_jev.py` `summarizer.py` `editorial_generator.py` `pdf_builder.py` + `pdf_template.py` → `gmail_sender.py`
 ```
 
